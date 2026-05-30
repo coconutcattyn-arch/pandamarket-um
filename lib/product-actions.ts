@@ -8,6 +8,7 @@ import type { ContactMethodKey, ProductStatusKey } from "./types";
 
 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+const createProductTimeoutMs = 20_000;
 
 export type ProductActionState = {
   error?: string;
@@ -151,11 +152,114 @@ async function uploadProductImages(
   }
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(message));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+async function createProductWorkflow({
+  supabase,
+  userId,
+  title,
+  description,
+  price,
+  status,
+  categorySlug,
+  locationSlug,
+  condition,
+  imageFiles,
+  formData
+}: {
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  title: string;
+  description: string;
+  price: number;
+  status: ProductStatusKey;
+  categorySlug: string;
+  locationSlug: string;
+  condition: string;
+  imageFiles: File[];
+  formData: FormData;
+}) {
+  const [schoolId, categoryId, locationId] = await Promise.all([
+    getRequiredId(supabase, "schools", defaultSchool.slug),
+    getRequiredId(supabase, "categories", categorySlug),
+    getRequiredId(supabase, "locations", locationSlug)
+  ]);
+
+  const { data: product, error: productError } = await supabase
+    .from("products")
+    .insert({
+      seller_id: userId,
+      school_id: schoolId,
+      category_id: categoryId,
+      location_id: locationId,
+      title,
+      price: Number.isFinite(price) ? price : 0,
+      description,
+      condition,
+      status,
+      tags: []
+    })
+    .select("id")
+    .single();
+
+  if (productError || !product?.id) {
+    console.error("Failed to insert product", { productError, product });
+    return { error: productError?.message ?? "商品发布失败。" };
+  }
+
+  const productId = product.id as string;
+
+  try {
+    await uploadProductImages(supabase, productId, title, imageFiles);
+  } catch (error) {
+    console.error("Product image upload step failed", { productId, error });
+    return { error: "图片上传失败，请重试。" };
+  }
+
+  const contactRows = [
+    { method: "wechat", value: textValue(formData, "wechat") },
+    { method: "whatsapp", value: textValue(formData, "whatsapp") },
+    { method: "telegram", value: textValue(formData, "telegram") }
+  ].filter((contact) => contact.value.length > 0);
+
+  if (contactRows.length > 0) {
+    const { error: contactsError } = await supabase.from("product_contacts").insert(
+      contactRows.map((contact) => ({
+        product_id: productId,
+        method: contact.method as ContactMethodKey,
+        value: contact.value
+      }))
+    );
+
+    if (contactsError) {
+      console.error("Failed to insert product contacts", { productId, contactRows, error: contactsError });
+      return { error: contactsError.message };
+    }
+  }
+
+  return { productId };
+}
+
 export async function createProductAction(
   _previousState: ProductActionState,
   formData: FormData
 ): Promise<ProductActionState> {
-  let productId: string | null = null;
   const supabase = createSupabaseServerClient();
 
   if (!supabase) {
@@ -166,7 +270,7 @@ export async function createProductAction(
   const user = await getCurrentActionUser(supabase);
 
   if (!user) {
-    redirect("/login?next=/publish");
+    return { error: "请先登录" };
   }
 
   const title = textValue(formData, "title");
@@ -187,67 +291,39 @@ export async function createProductAction(
     return { error: imageError };
   }
 
+  let result: { productId?: string; error?: string };
+
   try {
-    const [schoolId, categoryId, locationId] = await Promise.all([
-      getRequiredId(supabase, "schools", defaultSchool.slug),
-      getRequiredId(supabase, "categories", categorySlug),
-      getRequiredId(supabase, "locations", locationSlug)
-    ]);
-
-    const { data: product, error: productError } = await supabase
-      .from("products")
-      .insert({
-        seller_id: user.id,
-        school_id: schoolId,
-        category_id: categoryId,
-        location_id: locationId,
+    result = await withTimeout(
+      createProductWorkflow({
+        supabase,
+        userId: user.id,
         title,
-        price: Number.isFinite(price) ? price : 0,
         description,
-        condition,
+        price,
         status,
-        tags: []
-      })
-      .select("id")
-      .single();
-
-    if (productError || !product?.id) {
-      console.error("Failed to insert product", { productError, product });
-      return { error: productError?.message ?? "商品发布失败。" };
-    }
-
-    productId = product.id as string;
-    await uploadProductImages(supabase, productId, title, imageFiles);
-
-    const contactRows = [
-      { method: "wechat", value: textValue(formData, "wechat") },
-      { method: "whatsapp", value: textValue(formData, "whatsapp") },
-      { method: "telegram", value: textValue(formData, "telegram") }
-    ].filter((contact) => contact.value.length > 0);
-
-    if (contactRows.length > 0) {
-      const { error: contactsError } = await supabase.from("product_contacts").insert(
-        contactRows.map((contact) => ({
-          product_id: productId,
-          method: contact.method as ContactMethodKey,
-          value: contact.value
-        }))
-      );
-
-      if (contactsError) {
-        console.error("Failed to insert product contacts", { productId, contactRows, error: contactsError });
-        return { error: contactsError.message };
-      }
-    }
+        categorySlug,
+        locationSlug,
+        condition,
+        imageFiles,
+        formData
+      }),
+      createProductTimeoutMs,
+      "发布超时，请检查网络后重试。"
+    );
   } catch (error) {
     console.error("Create product action failed", error);
     return { error: error instanceof Error ? error.message : "商品发布失败，请稍后再试。" };
   }
 
+  if (result.error || !result.productId) {
+    return { error: result.error ?? "商品发布失败，请稍后再试。" };
+  }
+
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath(`/products/${productId}`);
-  redirect(`/products/${productId}`);
+  revalidatePath(`/products/${result.productId}`);
+  redirect(`/products/${result.productId}`);
 }
 
 export async function updateProductAction(
