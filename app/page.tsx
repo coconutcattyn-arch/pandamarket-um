@@ -1,97 +1,217 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
 import { FilterPillLink } from "@/components/FilterPillLink";
-import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
 import { PageShell, SectionHeader } from "@/components/ui";
-import { categories, homeLocationTags } from "@/lib/data";
+import { categories, getCategoryLabel, getLocationLabel, locationGroups, locations } from "@/lib/data";
 import { getProductsFromSupabase } from "@/lib/product-queries";
+import type { ProductCategoryKey, ProductLocationKey } from "@/lib/types";
 
 export const revalidate = 60;
 
-export default async function HomePage() {
+type HomeSearchParams = {
+  category?: string;
+  area?: string;
+  location?: string;
+  q?: string;
+};
+
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function buildHomeHref(params: HomeSearchParams) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `/?${query}` : "/";
+}
+
+function isCategoryKey(value?: string): value is ProductCategoryKey {
+  return Boolean(value && categories.some((category) => category.key === value));
+}
+
+function isLocationKey(value?: string): value is ProductLocationKey {
+  return Boolean(value && locations.some((location) => location.key === value));
+}
+
+export default async function HomePage({ searchParams }: { searchParams?: HomeSearchParams }) {
   const products = await getProductsFromSupabase();
-  const latestProducts = [...products]
+  const selectedCategory = isCategoryKey(firstValue(searchParams?.category)) ? firstValue(searchParams?.category) : undefined;
+  const selectedLocation = isLocationKey(firstValue(searchParams?.location)) ? firstValue(searchParams?.location) : undefined;
+  const keyword = firstValue(searchParams?.q)?.trim() ?? "";
+  const requestedArea = firstValue(searchParams?.area);
+  const areaFromLocation = locationGroups.find((group) =>
+    selectedLocation ? (group.locationKeys as readonly string[]).includes(selectedLocation) : false
+  )?.key;
+  const selectedArea = locationGroups.some((group) => group.key === requestedArea) ? requestedArea : areaFromLocation;
+  const selectedAreaGroup = locationGroups.find((group) => group.key === selectedArea);
+  const baseCategoryParams = {
+    area: selectedArea,
+    location: selectedLocation,
+    q: keyword
+  };
+  const baseLocationParams = {
+    category: selectedCategory,
+    q: keyword
+  };
+
+  const filteredProducts = products.filter((product) => {
+    if (selectedCategory && product.category !== selectedCategory) {
+      return false;
+    }
+
+    if (selectedLocation && product.location !== selectedLocation) {
+      return false;
+    }
+
+    if (!selectedLocation && selectedAreaGroup && !(selectedAreaGroup.locationKeys as readonly string[]).includes(product.location)) {
+      return false;
+    }
+
+    if (keyword) {
+      const haystack = [
+        product.title,
+        product.description,
+        getCategoryLabel(product.category),
+        getLocationLabel(product.location)
+      ].join(" ").toLowerCase();
+
+      if (!haystack.includes(keyword.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const latestProducts = [...filteredProducts]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 4);
-  const freeProducts = products.filter((product) => product.category === "free");
-  const graduationProducts = products.filter((product) => product.category === "graduation_sale");
+  const freeProducts = filteredProducts.filter((product) => product.category === "free");
+  const graduationProducts = filteredProducts.filter((product) => product.category === "graduation_sale");
 
   return (
     <>
       <PageShell>
-        <Header />
-        <section className="overflow-hidden rounded-[2rem] border border-panda-line bg-white px-6 py-8 shadow-soft sm:px-10 sm:py-12">
-          <p className="mb-4 text-sm font-semibold text-panda-leaf">UM校园交易社区</p>
-          <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-panda-ink sm:text-6xl">
-            PandaMarket
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-panda-muted">
-            更轻松地出售闲置，找到身边的校园好物。第一阶段聚焦 UM，平台只做信息展示和买卖双方匹配。
-          </p>
-          <div className="mt-7 rounded-full border border-panda-line bg-panda-paper p-1.5 shadow-sm">
+        <section className="pb-3 pt-2 sm:pb-5">
+          <div className="flex items-start justify-between gap-4">
+            <Link href="/" prefetch className="block">
+              <h1 className="font-serif text-[2.15rem] font-semibold leading-none tracking-normal text-[#C99A2E] sm:text-5xl">
+                PandaMarket
+              </h1>
+              <p className="mt-1.5 text-sm font-medium text-panda-muted">UM校园交易社区</p>
+            </Link>
+            <Link
+              href="/publish"
+              prefetch
+              className="mt-1 shrink-0 rounded-full bg-panda-lime px-4 py-2 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
+            >
+              发布
+            </Link>
+          </div>
+          <form action="/" className="mt-4 rounded-full border border-panda-line bg-white px-4 py-2.5 shadow-sm">
+            {selectedCategory ? <input name="category" type="hidden" value={selectedCategory} /> : null}
+            {selectedArea ? <input name="area" type="hidden" value={selectedArea} /> : null}
+            {selectedLocation ? <input name="location" type="hidden" value={selectedLocation} /> : null}
             <input
-              className="w-full rounded-full bg-white px-5 py-3 text-base text-panda-ink outline-none placeholder:text-panda-muted/70"
-              placeholder="搜索 UM 闲置：教材、桌子、电饭煲"
+              className="w-full bg-transparent text-sm text-panda-ink outline-none placeholder:text-panda-muted/70 sm:text-base"
+              name="q"
+              defaultValue={keyword}
+              placeholder="搜索二手商品"
             />
-          </div>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/products" prefetch className="rounded-full bg-panda-lime px-5 py-3 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]">
-              浏览商品
-            </Link>
-            <Link href="/publish" prefetch className="rounded-full border border-panda-line bg-white px-5 py-3 text-sm font-semibold text-panda-ink">
-              发布闲置
-            </Link>
-          </div>
+          </form>
         </section>
 
-        <section className="mt-8">
-          <SectionHeader eyebrow="Categories" title="常用分类" />
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2">
-            <FilterPillLink href="/products">全部类别</FilterPillLink>
-            {categories.map((category) => (
-              <FilterPillLink key={category.key} href={`/products?category=${category.key}`}>
+        <section className="mt-1">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            <FilterPillLink href={buildHomeHref(baseCategoryParams)} active={!selectedCategory}>
+              全部类别
+            </FilterPillLink>
+            {categories.slice(0, 8).map((category) => (
+              <FilterPillLink
+                key={category.key}
+                href={buildHomeHref({ ...baseCategoryParams, category: category.key })}
+                active={selectedCategory === category.key}
+              >
                 {category.label}
               </FilterPillLink>
             ))}
           </div>
         </section>
 
-        <section className="mt-8">
-          <SectionHeader eyebrow="Locations" title="常用地点" />
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2">
-            <FilterPillLink href="/products">全部位置</FilterPillLink>
-            {homeLocationTags.map((location) => (
-              <FilterPillLink key={location.key} href={location.key === "near_um" ? "/products?area=university" : `/products?location=${location.key}`}>
-                {location.label}
+        <section className="mt-2">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            <FilterPillLink href={buildHomeHref(baseLocationParams)} active={!selectedArea && !selectedLocation}>
+              全部位置
+            </FilterPillLink>
+            {locationGroups.map((group) => (
+              <FilterPillLink
+                key={group.key}
+                href={buildHomeHref({ ...baseLocationParams, area: group.key })}
+                active={selectedArea === group.key && !selectedLocation}
+              >
+                {group.label}
               </FilterPillLink>
             ))}
           </div>
+          {selectedAreaGroup ? (
+            <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
+              <FilterPillLink href={buildHomeHref({ ...baseLocationParams, area: selectedAreaGroup.key })} active={!selectedLocation}>
+                {selectedAreaGroup.label}全部
+              </FilterPillLink>
+              {selectedAreaGroup.locationKeys.map((locationKey) => (
+                <FilterPillLink
+                  key={locationKey}
+                  href={buildHomeHref({
+                    ...baseLocationParams,
+                    area: selectedAreaGroup.key,
+                    location: locationKey
+                  })}
+                  active={selectedLocation === locationKey}
+                >
+                  {getLocationLabel(locationKey)}
+                </FilterPillLink>
+              ))}
+            </div>
+          ) : null}
         </section>
 
-        <section className="mt-8">
+        <section className="mt-4">
           <SectionHeader eyebrow="Latest" title="最新发布" actionHref="/products" actionText="查看全部" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {latestProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {latestProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {latestProducts.map((product) => (
+                <ProductCard key={product.id} product={product} compact />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[1.4rem] border border-panda-line bg-white px-4 py-8 text-center text-sm text-panda-muted shadow-soft">
+              暂无符合条件的商品
+            </div>
+          )}
         </section>
 
-        <section className="mt-8">
+        <section className="mt-7">
           <SectionHeader eyebrow="Free" title="免费赠送专区" actionHref="/products" actionText="去看看" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             {freeProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} compact />
             ))}
           </div>
         </section>
 
-        <section className="mt-8">
+        <section className="mt-7">
           <SectionHeader eyebrow="Graduation" title="毕业季急出专区" actionHref="/products" actionText="查看专区" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             {graduationProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} compact />
             ))}
           </div>
         </section>
