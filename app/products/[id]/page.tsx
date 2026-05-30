@@ -40,7 +40,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
 
   return (
     <PageShell>
-      <Header title="商品详情" />
+      <Header title="商品详情" currentUser={currentUser} />
       <article className="overflow-hidden rounded-[2rem] border border-panda-line bg-white shadow-soft">
         <ProductImageCarousel images={galleryImages} statusBadge={<StatusBadge status={product.status} />} />
         <div className="p-5 sm:p-8">
@@ -102,7 +102,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             <button className="rounded-full border border-panda-line bg-white px-5 py-3 font-semibold text-panda-ink">
               收藏
             </button>
-            <Link href="/products" className="rounded-full bg-panda-lime px-5 py-3 text-center font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]">
+            <Link href="/products" prefetch className="rounded-full bg-panda-lime px-5 py-3 text-center font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]">
               返回列表
             </Link>
           </div>
@@ -110,6 +110,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             <div className="mt-3 grid grid-cols-2 gap-3">
               <Link
                 href={`/products/${product.id}/edit`}
+                prefetch
                 className="rounded-full bg-panda-lime px-5 py-3 text-center font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
               >
                 编辑

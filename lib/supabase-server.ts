@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +32,7 @@ export function createSupabaseServerClient() {
   });
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const supabase = createSupabaseServerClient();
 
   if (!supabase) {
@@ -48,4 +49,4 @@ export async function getCurrentUser() {
   }
 
   return user;
-}
+});

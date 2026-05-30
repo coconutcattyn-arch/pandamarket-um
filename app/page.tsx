@@ -36,10 +36,10 @@ export default async function HomePage() {
             />
           </div>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/products" className="rounded-full bg-panda-lime px-5 py-3 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]">
+            <Link href="/products" prefetch className="rounded-full bg-panda-lime px-5 py-3 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]">
               浏览商品
             </Link>
-            <Link href="/publish" className="rounded-full border border-panda-line bg-white px-5 py-3 text-sm font-semibold text-panda-ink">
+            <Link href="/publish" prefetch className="rounded-full border border-panda-line bg-white px-5 py-3 text-sm font-semibold text-panda-ink">
               发布闲置
             </Link>
           </div>

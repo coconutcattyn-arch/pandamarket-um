@@ -23,7 +23,7 @@ export default async function MyProductsPage() {
   return (
     <>
       <PageShell>
-        <Header title="我的商品" />
+        <Header title="我的商品" currentUser={user} />
         <section className="rounded-[2rem] border border-panda-line bg-white p-5 shadow-soft">
           <p className="text-sm font-semibold text-panda-leaf">已登录</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-panda-ink">
@@ -44,6 +44,7 @@ export default async function MyProductsPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <Link
                       href={`/products/${product.id}/edit`}
+                      prefetch
                       className="rounded-full bg-panda-lime px-4 py-2 text-center text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
                     >
                       编辑
@@ -58,6 +59,7 @@ export default async function MyProductsPage() {
               <h2 className="text-2xl font-semibold text-panda-ink">你还没有发布商品</h2>
               <Link
                 href="/publish"
+                prefetch
                 className="mt-5 inline-flex rounded-full bg-panda-lime px-5 py-3 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
               >
                 去发布第一件商品

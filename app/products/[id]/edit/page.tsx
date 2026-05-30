@@ -27,7 +27,7 @@ export default async function ProductEditPage({ params }: { params: { id: string
 
   return (
     <PageShell>
-      <Header title="编辑商品" />
+      <Header title="编辑商品" currentUser={user} />
       <section className="rounded-[2rem] border border-panda-line bg-white p-6 text-panda-ink shadow-soft sm:p-8">
         <p className="mb-3 text-sm font-semibold text-panda-leaf">只可编辑自己发布的商品</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">编辑商品信息</h1>
@@ -36,7 +36,7 @@ export default async function ProductEditPage({ params }: { params: { id: string
         </p>
       </section>
       <ProductEditForm product={product} />
-      <Link href={`/products/${product.id}`} className="mt-5 inline-flex text-sm font-semibold text-panda-leaf">
+      <Link href={`/products/${product.id}`} prefetch className="mt-5 inline-flex text-sm font-semibold text-panda-leaf">
         返回商品详情
       </Link>
     </PageShell>

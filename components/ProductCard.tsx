@@ -10,10 +10,18 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/products/${product.id}`}
+      prefetch
       className="group block overflow-hidden rounded-[1.6rem] border border-panda-line bg-white shadow-soft transition hover:-translate-y-0.5 hover:border-[#E9D79C]"
     >
       <div className="relative aspect-[4/3] bg-[#FFF8E1]">
-        <Image src={image.url} alt={image.alt} fill className="object-cover" sizes="(min-width: 768px) 33vw, 50vw" />
+        <Image
+          src={image.url}
+          alt={image.alt}
+          fill
+          className="object-cover"
+          sizes="(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw"
+          quality={68}
+        />
         <div className="absolute left-3 top-3">
           <StatusBadge status={product.status} />
         </div>

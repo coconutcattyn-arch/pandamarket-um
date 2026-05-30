@@ -9,13 +9,13 @@ type ProductRow = {
   school_id: string;
   title: string;
   price: number | string;
-  original_price: number | string | null;
-  description: string;
-  condition: string | null;
+  original_price?: number | string | null;
+  description?: string | null;
+  condition?: string | null;
   status: string;
-  views_count: number | null;
-  favorites_count: number | null;
-  tags: string[] | null;
+  views_count?: number | null;
+  favorites_count?: number | null;
+  tags?: string[] | null;
   created_at: string;
   updated_at: string;
   categories: { slug: string } | Array<{ slug: string }> | null;
@@ -26,7 +26,7 @@ type ProductRow = {
     alt: string | null;
     sort_order: number | null;
   }> | null;
-  product_contacts: Array<{
+  product_contacts?: Array<{
     id: string;
     method: string;
     value: string;
@@ -54,6 +54,21 @@ const productSelect = `
   locations(slug),
   product_images(id, image_url, alt, sort_order),
   product_contacts(id, method, value)
+`;
+
+const productListSelect = `
+  id,
+  seller_id,
+  school_id,
+  title,
+  price,
+  status,
+  created_at,
+  updated_at,
+  schools(slug),
+  categories(slug),
+  locations(slug),
+  product_images(id, image_url, alt, sort_order)
 `;
 
 function toNumber(value: number | string | null | undefined) {
@@ -109,7 +124,7 @@ function mapProduct(row: ProductRow): Product {
     updatedAt: row.updated_at,
     views: row.views_count ?? 0,
     likes: row.favorites_count ?? 0,
-    description: row.description,
+    description: row.description ?? "",
     condition: row.condition ?? "成色未填写",
     tags: row.tags ?? []
   };
@@ -122,7 +137,7 @@ export async function getProductsFromSupabase() {
 
   const { data, error } = await supabase
     .from("products")
-    .select(productSelect)
+    .select(productListSelect)
     .order("created_at", { ascending: false });
 
   if (error || !data || data.length === 0) {
@@ -139,7 +154,7 @@ export async function getProductByIdFromSupabase(id: string) {
 
   const { data, error } = await supabase
     .from("products")
-    .select(productSelect)
+    .select(productListSelect)
     .eq("id", id)
     .maybeSingle();
 

@@ -13,6 +13,7 @@ export function FilterPillLink({
   return (
     <Link
       href={href}
+      prefetch
       className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition ${
         active
           ? "border-panda-lime bg-panda-lime text-panda-ink shadow-sm"
@@ -23,4 +24,3 @@ export function FilterPillLink({
     </Link>
   );
 }
-

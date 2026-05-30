@@ -15,7 +15,7 @@ export default async function PublishPage() {
   return (
     <>
       <PageShell>
-        <Header title="发布商品" />
+        <Header title="发布商品" currentUser={user} />
         <section className="rounded-[2rem] border border-panda-line bg-white p-6 text-panda-ink shadow-soft sm:p-8">
           <p className="mb-3 text-sm font-semibold text-panda-leaf">发布商品不超过 1 分钟</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">把闲置交给附近需要的人。</h1>
