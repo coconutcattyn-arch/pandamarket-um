@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
+import { FilterPillLink } from "@/components/FilterPillLink";
 import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
-import { PageShell, Pill, SectionHeader } from "@/components/ui";
+import { PageShell, SectionHeader } from "@/components/ui";
 import { categories, homeLocationTags } from "@/lib/data";
 import { getProductsFromSupabase } from "@/lib/product-queries";
 
@@ -47,10 +48,11 @@ export default async function HomePage() {
         <section className="mt-8">
           <SectionHeader eyebrow="Categories" title="常用分类" />
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2">
-            {categories.map((category, index) => (
-              <Pill key={category.key} active={index === 0}>
+            <FilterPillLink href="/products">全部类别</FilterPillLink>
+            {categories.map((category) => (
+              <FilterPillLink key={category.key} href={`/products?category=${category.key}`}>
                 {category.label}
-              </Pill>
+              </FilterPillLink>
             ))}
           </div>
         </section>
@@ -58,10 +60,11 @@ export default async function HomePage() {
         <section className="mt-8">
           <SectionHeader eyebrow="Locations" title="常用地点" />
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2">
-            {homeLocationTags.map((location, index) => (
-              <Pill key={location.key} active={index === 0}>
+            <FilterPillLink href="/products">全部位置</FilterPillLink>
+            {homeLocationTags.map((location) => (
+              <FilterPillLink key={location.key} href={location.key === "near_um" ? "/products?area=university" : `/products?location=${location.key}`}>
                 {location.label}
-              </Pill>
+              </FilterPillLink>
             ))}
           </div>
         </section>

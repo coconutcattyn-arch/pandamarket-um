@@ -39,12 +39,57 @@ export const categories = [
 export const locations = [
   { key: "um_library", label: "UM Library" },
   { key: "he_she_coffee", label: "He & She Coffee" },
+  { key: "ehsan_ria", label: "Ehsan Ria" },
+  { key: "unitower", label: "Unitower" },
   { key: "kl_gateway", label: "KL Gateway" },
+  { key: "kl_gateway_premium", label: "KL Gateway Premium" },
+  { key: "pantai_panorama", label: "Pantai Panorama" },
+  { key: "camelia", label: "Camelia" },
   { key: "southlink", label: "Southlink" },
   { key: "southview", label: "Southview" },
   { key: "novum", label: "Novum" },
   { key: "pantai_hillpark", label: "Pantai Hillpark" },
+  { key: "ryan_miho", label: "Ryan Miho" },
+  { key: "pacific_star", label: "Pacific Star" },
+  { key: "seventeen", label: "Seventeen" },
+  { key: "atwater", label: "Atwater" },
+  { key: "pj_midtown", label: "PJ Midtown" },
+  { key: "central_stage", label: "Central Stage" },
+  { key: "avara", label: "Avara" },
+  { key: "vivo_tria", label: "Vivo & Tria" },
+  { key: "southbank", label: "Southbank" },
+  { key: "avantas", label: "Avantas" },
+  { key: "cubic_botanical", label: "Cubic Botanical" },
+  { key: "millerz", label: "Millerz" },
   { key: "petaling_jaya", label: "Petaling Jaya" }
+] as const;
+
+export const locationGroups = [
+  {
+    key: "kl",
+    label: "KL区",
+    locationKeys: ["kl_gateway", "kl_gateway_premium", "pantai_panorama", "camelia", "southlink", "southview", "novum"]
+  },
+  {
+    key: "pj",
+    label: "PJ区",
+    locationKeys: ["ryan_miho", "pacific_star", "seventeen", "atwater", "pj_midtown", "central_stage"]
+  },
+  {
+    key: "university",
+    label: "University区",
+    locationKeys: ["um_library", "he_she_coffee", "ehsan_ria", "unitower"]
+  },
+  {
+    key: "vivo",
+    label: "Vivo区",
+    locationKeys: ["avara", "vivo_tria", "southbank", "avantas"]
+  },
+  {
+    key: "cubic",
+    label: "Cubic区",
+    locationKeys: ["cubic_botanical", "millerz"]
+  }
 ] as const;
 
 export const homeLocationTags = [
