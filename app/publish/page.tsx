@@ -1,9 +1,17 @@
+import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { PublishProductForm } from "@/components/PublishProductForm";
 import { PageShell } from "@/components/ui";
+import { getCurrentUser } from "@/lib/supabase-server";
 
-export default function PublishPage() {
+export default async function PublishPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login?next=/publish");
+  }
+
   return (
     <>
       <PageShell>

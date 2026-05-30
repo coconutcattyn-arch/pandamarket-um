@@ -3,13 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { defaultSchool } from "./constants";
-import { supabase } from "./supabase";
+import { createSupabaseServerClient } from "./supabase-server";
 import type { ContactMethodKey, ProductStatusKey } from "./types";
 
-const testSellerId = process.env.PANDA_TEST_SELLER_ID;
 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
 export type ProductActionState = {
+  error?: string;
+};
+
+export type ProductEditActionState = {
   error?: string;
 };
 
@@ -18,11 +21,11 @@ function textValue(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function getRequiredId(table: "schools" | "categories" | "locations", slug: string) {
-  if (!supabase) {
-    throw new Error("Supabase is not configured.");
-  }
-
+async function getRequiredId(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+  table: "schools" | "categories" | "locations",
+  slug: string
+) {
   const { data, error } = await supabase.from(table).select("id").eq("slug", slug).single();
 
   if (error || !data?.id) {
@@ -30,6 +33,39 @@ async function getRequiredId(table: "schools" | "categories" | "locations", slug
   }
 
   return data.id as string;
+}
+
+async function getCurrentActionUser(supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>) {
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user;
+}
+
+async function ensureOwnProduct(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+  productId: string,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, seller_id")
+    .eq("id", productId)
+    .single();
+
+  if (error || !data) {
+    throw new Error("找不到商品。");
+  }
+
+  if (data.seller_id !== userId) {
+    throw new Error("只能操作自己发布的商品。");
+  }
 }
 
 function getImageFiles(formData: FormData) {
@@ -59,8 +95,13 @@ function safeFileName(fileName: string) {
     .replace(/-+/g, "-");
 }
 
-async function uploadProductImages(productId: string, title: string, files: File[]) {
-  if (!supabase || files.length === 0) {
+async function uploadProductImages(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+  productId: string,
+  title: string,
+  files: File[]
+) {
+  if (files.length === 0) {
     return;
   }
 
@@ -99,13 +140,16 @@ export async function createProductAction(
   formData: FormData
 ): Promise<ProductActionState> {
   let productId: string | null = null;
+  const supabase = createSupabaseServerClient();
 
   if (!supabase) {
     return { error: "请先配置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY。" };
   }
 
-  if (!testSellerId) {
-    return { error: "请先在 .env.local 中配置 PANDA_TEST_SELLER_ID。" };
+  const user = await getCurrentActionUser(supabase);
+
+  if (!user) {
+    redirect("/login?next=/publish");
   }
 
   const title = textValue(formData, "title");
@@ -128,15 +172,15 @@ export async function createProductAction(
 
   try {
     const [schoolId, categoryId, locationId] = await Promise.all([
-      getRequiredId("schools", defaultSchool.slug),
-      getRequiredId("categories", categorySlug),
-      getRequiredId("locations", locationSlug)
+      getRequiredId(supabase, "schools", defaultSchool.slug),
+      getRequiredId(supabase, "categories", categorySlug),
+      getRequiredId(supabase, "locations", locationSlug)
     ]);
 
     const { data: product, error: productError } = await supabase
       .from("products")
       .insert({
-        seller_id: testSellerId,
+        seller_id: user.id,
         school_id: schoolId,
         category_id: categoryId,
         location_id: locationId,
@@ -155,7 +199,7 @@ export async function createProductAction(
     }
 
     productId = product.id as string;
-    await uploadProductImages(productId, title, imageFiles);
+    await uploadProductImages(supabase, productId, title, imageFiles);
 
     const contactRows = [
       { method: "wechat", value: textValue(formData, "wechat") },
@@ -184,4 +228,127 @@ export async function createProductAction(
   revalidatePath("/products");
   revalidatePath(`/products/${productId}`);
   redirect(`/products/${productId}`);
+}
+
+export async function updateProductAction(
+  _previousState: ProductEditActionState,
+  formData: FormData
+): Promise<ProductEditActionState> {
+  const supabase = createSupabaseServerClient();
+
+  if (!supabase) {
+    return { error: "请先配置 Supabase 环境变量。" };
+  }
+
+  const user = await getCurrentActionUser(supabase);
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const productId = textValue(formData, "productId");
+  const title = textValue(formData, "title");
+  const description = textValue(formData, "description");
+  const price = Number(textValue(formData, "price") || 0);
+  const status = textValue(formData, "status") as ProductStatusKey;
+  const categorySlug = textValue(formData, "category");
+  const locationSlug = textValue(formData, "location");
+
+  if (!productId || !title || !description || !categorySlug || !locationSlug) {
+    return { error: "请填写完整商品信息。" };
+  }
+
+  try {
+    await ensureOwnProduct(supabase, productId, user.id);
+
+    const [categoryId, locationId] = await Promise.all([
+      getRequiredId(supabase, "categories", categorySlug),
+      getRequiredId(supabase, "locations", locationSlug)
+    ]);
+
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({
+        title,
+        price: Number.isFinite(price) ? price : 0,
+        description,
+        category_id: categoryId,
+        location_id: locationId,
+        status
+      })
+      .eq("id", productId)
+      .eq("seller_id", user.id);
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    const { error: deleteContactsError } = await supabase
+      .from("product_contacts")
+      .delete()
+      .eq("product_id", productId);
+
+    if (deleteContactsError) {
+      return { error: deleteContactsError.message };
+    }
+
+    const contactRows = [
+      { method: "wechat", value: textValue(formData, "wechat") },
+      { method: "whatsapp", value: textValue(formData, "whatsapp") },
+      { method: "telegram", value: textValue(formData, "telegram") }
+    ].filter((contact) => contact.value.length > 0);
+
+    if (contactRows.length > 0) {
+      const { error: contactsError } = await supabase.from("product_contacts").insert(
+        contactRows.map((contact) => ({
+          product_id: productId,
+          method: contact.method as ContactMethodKey,
+          value: contact.value
+        }))
+      );
+
+      if (contactsError) {
+        return { error: contactsError.message };
+      }
+    }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "商品更新失败，请稍后再试。" };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/my-products");
+  revalidatePath(`/products/${productId}`);
+  redirect(`/products/${productId}`);
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const supabase = createSupabaseServerClient();
+
+  if (!supabase) {
+    redirect("/my-products");
+  }
+
+  const user = await getCurrentActionUser(supabase);
+
+  if (!user) {
+    redirect("/login?next=/my-products");
+  }
+
+  const productId = textValue(formData, "productId");
+
+  if (!productId) {
+    redirect("/my-products");
+  }
+
+  await ensureOwnProduct(supabase, productId, user.id);
+
+  await supabase.from("product_contacts").delete().eq("product_id", productId);
+  await supabase.from("product_images").delete().eq("product_id", productId);
+  await supabase.from("products").delete().eq("id", productId).eq("seller_id", user.id);
+
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/my-products");
+  redirect("/my-products");
 }

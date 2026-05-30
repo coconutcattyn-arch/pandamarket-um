@@ -157,3 +157,21 @@ export async function getLatestProductsFromSupabase(limit = 4) {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit);
 }
+
+export async function getProductsBySellerIdFromSupabase(sellerId: string) {
+  if (!supabase) {
+    return getMockProducts().filter((product) => product.sellerId === sellerId);
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(productSelect)
+    .eq("seller_id", sellerId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as unknown as ProductRow[]).map(mapProduct);
+}

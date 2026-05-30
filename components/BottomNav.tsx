@@ -4,7 +4,7 @@ const items = [
   { href: "/", label: "首页", icon: "⌂" },
   { href: "/products", label: "商品", icon: "□" },
   { href: "/publish", label: "发布", icon: "+" },
-  { href: "/login", label: "我的", icon: "○" }
+  { href: "/my-products", label: "我的", icon: "○" }
 ];
 
 export function BottomNav() {

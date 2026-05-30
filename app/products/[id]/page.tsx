@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeleteProductButton } from "@/components/DeleteProductButton";
 import { Header } from "@/components/Header";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -16,6 +17,7 @@ import {
   reportReasons
 } from "@/lib/data";
 import { getProductByIdFromSupabase } from "@/lib/product-queries";
+import { getCurrentUser } from "@/lib/supabase-server";
 
 export function generateStaticParams() {
   return getProducts().map((product) => ({ id: product.id }));
@@ -25,6 +27,7 @@ export const revalidate = 60;
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await getProductByIdFromSupabase(params.id);
+  const currentUser = await getCurrentUser();
 
   if (!product) {
     notFound();
@@ -33,6 +36,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   const seller = getUserById(product.sellerId);
   const galleryImages = [...product.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const productContacts = product.productContacts.length > 0 ? product.productContacts : seller?.userContacts ?? [];
+  const isSeller = currentUser?.id === product.sellerId;
 
   return (
     <PageShell>
@@ -102,6 +106,17 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
               返回列表
             </Link>
           </div>
+          {isSeller ? (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Link
+                href={`/products/${product.id}/edit`}
+                className="rounded-full bg-panda-lime px-5 py-3 text-center font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
+              >
+                编辑
+              </Link>
+              <DeleteProductButton productId={product.id} />
+            </div>
+          ) : null}
           <details className="mt-5 rounded-[1.2rem] bg-panda-paper p-4">
             <summary className="cursor-pointer text-sm font-semibold text-panda-ink">举报商品</summary>
             <div className="mt-3 flex flex-wrap gap-2">
