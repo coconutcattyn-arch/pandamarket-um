@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "./supabase-server";
 import type { ContactMethodKey, ProductStatusKey } from "./types";
 
 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
 export type ProductActionState = {
   error?: string;
@@ -29,6 +30,7 @@ async function getRequiredId(
   const { data, error } = await supabase.from(table).select("id").eq("slug", slug).single();
 
   if (error || !data?.id) {
+    console.error("Failed to select required id", { table, slug, error, data });
     throw new Error(`Cannot find ${table} row for slug: ${slug}`);
   }
 
@@ -42,6 +44,7 @@ async function getCurrentActionUser(supabase: NonNullable<ReturnType<typeof crea
   } = await supabase.auth.getUser();
 
   if (error || !user) {
+    console.error("Failed to get current action user", error);
     return null;
   }
 
@@ -60,6 +63,7 @@ async function ensureOwnProduct(
     .single();
 
   if (error || !data) {
+    console.error("Failed to select product ownership", { productId, userId, error });
     throw new Error("找不到商品。");
   }
 
@@ -79,7 +83,10 @@ function validateImageFiles(files: File[]) {
     return "最多只能上传 5 张图片。";
   }
 
-  const invalidFile = files.find((file) => !allowedImageTypes.includes(file.type));
+  const invalidFile = files.find((file) => {
+    const lowerName = file.name.toLowerCase();
+    return !allowedImageTypes.includes(file.type) && !allowedImageExtensions.some((extension) => lowerName.endsWith(extension));
+  });
 
   if (invalidFile) {
     return "图片格式仅支持 jpg、jpeg、png、webp。";
@@ -110,11 +117,19 @@ async function uploadProductImages(
   for (const [index, file] of files.entries()) {
     const path = `products/${productId}/${Date.now()}-${index + 1}-${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file, {
-      contentType: file.type,
+      contentType: file.type || "image/jpeg",
       upsert: false
     });
 
     if (uploadError) {
+      console.error("Failed to upload product image", {
+        productId,
+        path,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        error: uploadError
+      });
       throw new Error(uploadError.message);
     }
 
@@ -131,6 +146,7 @@ async function uploadProductImages(
   const { error: imageRowsError } = await supabase.from("product_images").insert(uploadedImages);
 
   if (imageRowsError) {
+    console.error("Failed to insert product image rows", { productId, uploadedImages, error: imageRowsError });
     throw new Error(imageRowsError.message);
   }
 }
@@ -143,6 +159,7 @@ export async function createProductAction(
   const supabase = createSupabaseServerClient();
 
   if (!supabase) {
+    console.error("Supabase server client is not configured for product creation");
     return { error: "请先配置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY。" };
   }
 
@@ -195,6 +212,7 @@ export async function createProductAction(
       .single();
 
     if (productError || !product?.id) {
+      console.error("Failed to insert product", { productError, product });
       return { error: productError?.message ?? "商品发布失败。" };
     }
 
@@ -217,10 +235,12 @@ export async function createProductAction(
       );
 
       if (contactsError) {
+        console.error("Failed to insert product contacts", { productId, contactRows, error: contactsError });
         return { error: contactsError.message };
       }
     }
   } catch (error) {
+    console.error("Create product action failed", error);
     return { error: error instanceof Error ? error.message : "商品发布失败，请稍后再试。" };
   }
 

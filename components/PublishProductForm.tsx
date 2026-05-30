@@ -7,6 +7,8 @@ import { categories, defaultProductStatus, locations, productStatus } from "@/li
 import { createProductAction, type ProductActionState } from "@/lib/product-actions";
 
 const initialState: ProductActionState = {};
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
 function SubmitButton({ disabled = false }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
@@ -26,16 +28,31 @@ export function PublishProductForm() {
   const [selectedImageCount, setSelectedImageCount] = useState(0);
   const [imageError, setImageError] = useState("");
 
+  function isAllowedImage(file: File) {
+    const lowerName = file.name.toLowerCase();
+    return allowedImageTypes.includes(file.type) || allowedImageExtensions.some((extension) => lowerName.endsWith(extension));
+  }
+
   function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    setSelectedImageCount(files.length);
+    try {
+      const files = Array.from(event.target.files ?? []);
+      setSelectedImageCount(files.length);
 
-    if (files.length > 5) {
-      setImageError("最多上传 5 张图片，请重新选择。");
-      return;
+      if (files.length > 5) {
+        setImageError("最多上传 5 张图片，请重新选择。");
+        return;
+      }
+
+      if (files.some((file) => !isAllowedImage(file))) {
+        setImageError("图片格式仅支持 jpg、jpeg、png、webp。");
+        return;
+      }
+
+      setImageError("");
+    } catch (error) {
+      console.error("Failed to read selected images", error);
+      setImageError("读取图片失败，请重新选择图片。");
     }
-
-    setImageError("");
   }
 
   return (
@@ -53,6 +70,7 @@ export function PublishProductForm() {
           <span>
             支持从相册选择 1-5 张 jpg、jpeg、png、webp 图片。已选择 {selectedImageCount} 张，暂不上传也可以发布。
           </span>
+          {selectedImageCount === 0 ? <span>未选择图片时会使用默认商品图。</span> : null}
           {imageError ? <span className="font-medium text-red-700">{imageError}</span> : null}
         </div>
       </Field>
@@ -116,7 +134,7 @@ export function PublishProductForm() {
         </Field>
       </div>
 
-      {state.error ? (
+      {state?.error ? (
         <p className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {state.error}
         </p>

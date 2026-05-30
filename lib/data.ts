@@ -33,6 +33,13 @@ function getLabel<T extends { key: string; label: string }>(items: readonly T[],
   return items.find((item) => item.key === key)?.label ?? key;
 }
 
+const fallbackProductImage = {
+  id: "fallback-product-image",
+  url: "/images/product-books.svg",
+  alt: "商品图片",
+  sortOrder: 1
+};
+
 export function getProducts() {
   return products;
 }
@@ -97,7 +104,7 @@ export function getContactMethodLabel(method: ContactMethodKey) {
 }
 
 export function getPrimaryProductImage(product: Product) {
-  return [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)[0];
+  return [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? fallbackProductImage;
 }
 
 export function formatProductDate(createdAt: string) {
