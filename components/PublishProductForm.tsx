@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Field, inputClass } from "@/components/ui";
 import { categories, defaultProductStatus, locations, productStatus } from "@/lib/data";
+import { validateProductImageFiles } from "@/lib/image-utils";
 import { createProductAction, type ProductActionState } from "@/lib/product-actions";
 
 const initialState: ProductActionState = {};
-const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
-const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
+type SelectedImagePreview = {
+  id: string;
+  name: string;
+  url?: string;
+};
 
 function SubmitButton({ disabled = false }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
@@ -27,27 +32,55 @@ export function PublishProductForm() {
   const [state, formAction] = useFormState(createProductAction, initialState);
   const [selectedImageCount, setSelectedImageCount] = useState(0);
   const [imageError, setImageError] = useState("");
+  const [previews, setPreviews] = useState<SelectedImagePreview[]>([]);
 
-  function isAllowedImage(file: File) {
-    const lowerName = file.name.toLowerCase();
-    return allowedImageTypes.includes(file.type) || allowedImageExtensions.some((extension) => lowerName.endsWith(extension));
-  }
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => {
+        if (preview.url) {
+          URL.revokeObjectURL(preview.url);
+        }
+      });
+    };
+  }, [previews]);
 
   function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     try {
       const files = Array.from(event.target.files ?? []);
       setSelectedImageCount(files.length);
+      setPreviews((currentPreviews) => {
+        currentPreviews.forEach((preview) => {
+          if (preview.url) {
+            URL.revokeObjectURL(preview.url);
+          }
+        });
 
-      if (files.length > 5) {
-        setImageError("最多上传 5 张图片，请重新选择。");
+        return [];
+      });
+
+      const validationError = validateProductImageFiles(files);
+      if (validationError) {
+        setImageError(validationError);
         return;
       }
 
-      if (files.some((file) => !isAllowedImage(file))) {
-        setImageError("图片格式仅支持 jpg、jpeg、png、webp。");
-        return;
-      }
+      const nextPreviews = files.map((file, index) => {
+        try {
+          return {
+            id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+            name: file.name,
+            url: URL.createObjectURL(file)
+          };
+        } catch (error) {
+          console.error("Failed to create publish image preview", { fileName: file.name, error });
+          return {
+            id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+            name: file.name
+          };
+        }
+      });
 
+      setPreviews(nextPreviews);
       setImageError("");
     } catch (error) {
       console.error("Failed to read selected images", error);
@@ -71,6 +104,22 @@ export function PublishProductForm() {
             支持从相册选择 1-5 张 jpg、jpeg、png、webp 图片。已选择 {selectedImageCount} 张，暂不上传也可以发布。
           </span>
           {selectedImageCount === 0 ? <span>未选择图片时会使用默认商品图。</span> : null}
+          {previews.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {previews.map((preview) => (
+                <div key={preview.id} className="overflow-hidden rounded-2xl border border-panda-line bg-white">
+                  {preview.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={preview.url} alt={preview.name} className="aspect-square w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-square items-center justify-center px-2 text-center text-xs text-panda-muted">
+                      {preview.name}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
           {imageError ? <span className="font-medium text-red-700">{imageError}</span> : null}
         </div>
       </Field>

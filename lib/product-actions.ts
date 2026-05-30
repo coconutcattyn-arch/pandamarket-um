@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { defaultSchool } from "./constants";
+import { getUploadContentType, imageUploadFailMessage, validateProductImageFiles } from "./image-utils";
+import { ensureUserProfile } from "./profile-helpers";
 import { createSupabaseServerClient } from "./supabase-server";
 import type { ContactMethodKey, ProductStatusKey } from "./types";
 
-const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
-const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 const createProductTimeoutMs = 20_000;
 
 export type ProductActionState = {
@@ -79,35 +79,21 @@ function getImageFiles(formData: FormData) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
-function validateImageFiles(files: File[]) {
-  if (files.length > 5) {
-    return "最多只能上传 5 张图片。";
-  }
-
-  const invalidFile = files.find((file) => {
-    const lowerName = file.name.toLowerCase();
-    return !allowedImageTypes.includes(file.type) && !allowedImageExtensions.some((extension) => lowerName.endsWith(extension));
-  });
-
-  if (invalidFile) {
-    return "图片格式仅支持 jpg、jpeg、png、webp。";
-  }
-
-  return null;
-}
-
 function safeFileName(fileName: string) {
-  return fileName
+  const cleaned = fileName
     .toLowerCase()
     .replace(/[^a-z0-9._-]/g, "-")
     .replace(/-+/g, "-");
+
+  return cleaned || "product-image.jpg";
 }
 
 async function uploadProductImages(
   supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
   productId: string,
   title: string,
-  files: File[]
+  files: File[],
+  startSortOrder = 1
 ) {
   if (files.length === 0) {
     return;
@@ -118,7 +104,7 @@ async function uploadProductImages(
   for (const [index, file] of files.entries()) {
     const path = `products/${productId}/${Date.now()}-${index + 1}-${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file, {
-      contentType: file.type || "image/jpeg",
+      contentType: getUploadContentType(file),
       upsert: false
     });
 
@@ -140,7 +126,7 @@ async function uploadProductImages(
       product_id: productId,
       image_url: data.publicUrl,
       alt: title,
-      sort_order: index + 1
+      sort_order: startSortOrder + index
     });
   }
 
@@ -168,6 +154,71 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
       clearTimeout(timeoutId);
     }
   }
+}
+
+function storagePathFromPublicUrl(url: string) {
+  try {
+    const marker = "/storage/v1/object/public/product-images/";
+    const markerIndex = url.indexOf(marker);
+
+    if (markerIndex < 0) {
+      return "";
+    }
+
+    return decodeURIComponent(url.slice(markerIndex + marker.length));
+  } catch (error) {
+    console.error("Failed to parse product image storage path", { url, error });
+    return "";
+  }
+}
+
+async function deleteProductImages(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+  productId: string,
+  imageIds: string[]
+) {
+  if (imageIds.length === 0) {
+    return "";
+  }
+
+  const { data: images, error: selectError } = await supabase
+    .from("product_images")
+    .select("id, image_url")
+    .eq("product_id", productId)
+    .in("id", imageIds);
+
+  if (selectError) {
+    console.error("Failed to select images before delete", { productId, imageIds, error: selectError });
+    return selectError.message;
+  }
+
+  const storagePaths = (images ?? [])
+    .map((image) => storagePathFromPublicUrl(image.image_url))
+    .filter((path): path is string => path.length > 0);
+
+  let storageWarning = "";
+
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage.from("product-images").remove(storagePaths);
+
+    if (storageError) {
+      console.error("Failed to delete product images from storage", { productId, storagePaths, error: storageError });
+      storageWarning = "部分图片文件删除失败，但商品信息已保存。";
+    }
+  }
+
+  const { error: deleteRowsError } = await supabase
+    .from("product_images")
+    .delete()
+    .eq("product_id", productId)
+    .in("id", imageIds);
+
+  if (deleteRowsError) {
+    console.error("Failed to delete product image rows", { productId, imageIds, error: deleteRowsError });
+    return deleteRowsError.message;
+  }
+
+  return storageWarning;
 }
 
 async function createProductWorkflow({
@@ -229,7 +280,7 @@ async function createProductWorkflow({
     await uploadProductImages(supabase, productId, title, imageFiles);
   } catch (error) {
     console.error("Product image upload step failed", { productId, error });
-    return { error: "图片上传失败，请重试。" };
+    return { error: imageUploadFailMessage };
   }
 
   const contactRows = [
@@ -273,6 +324,12 @@ export async function createProductAction(
     return { error: "请先登录" };
   }
 
+  const profileResult = await ensureUserProfile(supabase, user);
+
+  if (profileResult.error) {
+    return { error: profileResult.error };
+  }
+
   const title = textValue(formData, "title");
   const description = textValue(formData, "description");
   const price = Number(textValue(formData, "price") || 0);
@@ -281,7 +338,7 @@ export async function createProductAction(
   const locationSlug = textValue(formData, "location");
   const condition = textValue(formData, "condition") || "成色未填写";
   const imageFiles = getImageFiles(formData);
-  const imageError = validateImageFiles(imageFiles);
+  const imageError = validateProductImageFiles(imageFiles);
 
   if (!title || !description || !categorySlug || !locationSlug) {
     return { error: "请填写商品标题、描述、分类和交易地点。" };
@@ -349,13 +406,40 @@ export async function updateProductAction(
   const status = textValue(formData, "status") as ProductStatusKey;
   const categorySlug = textValue(formData, "category");
   const locationSlug = textValue(formData, "location");
+  const deleteImageIds = formData
+    .getAll("deleteImageIds")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+  const imageFiles = getImageFiles(formData);
 
   if (!productId || !title || !description || !categorySlug || !locationSlug) {
     return { error: "请填写完整商品信息。" };
   }
 
+  const imageValidationError = validateProductImageFiles(imageFiles);
+  if (imageValidationError) {
+    return { error: imageValidationError };
+  }
+
+  let imageWarning = "";
+
   try {
     await ensureOwnProduct(supabase, productId, user.id);
+
+    const { data: existingImages, error: existingImagesError } = await supabase
+      .from("product_images")
+      .select("id")
+      .eq("product_id", productId);
+
+    if (existingImagesError) {
+      console.error("Failed to select existing product images", { productId, error: existingImagesError });
+      return { error: existingImagesError.message };
+    }
+
+    const remainingImageCount = (existingImages ?? []).filter((image) => !deleteImageIds.includes(image.id)).length;
+
+    if (remainingImageCount + imageFiles.length > 5) {
+      return { error: "最多只能保留 5 张图片。" };
+    }
 
     const [categoryId, locationId] = await Promise.all([
       getRequiredId(supabase, "categories", categorySlug),
@@ -407,8 +491,26 @@ export async function updateProductAction(
         return { error: contactsError.message };
       }
     }
+
+    imageWarning = await deleteProductImages(supabase, productId, deleteImageIds);
+
+    try {
+      await uploadProductImages(supabase, productId, title, imageFiles, remainingImageCount + 1);
+    } catch (error) {
+      console.error("Product edit image upload step failed", { productId, error });
+      return { error: imageUploadFailMessage };
+    }
   } catch (error) {
+    console.error("Update product action failed", { productId, error });
     return { error: error instanceof Error ? error.message : "商品更新失败，请稍后再试。" };
+  }
+
+  if (imageWarning) {
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath("/my-products");
+    revalidatePath(`/products/${productId}`);
+    return { error: imageWarning };
   }
 
   revalidatePath("/");

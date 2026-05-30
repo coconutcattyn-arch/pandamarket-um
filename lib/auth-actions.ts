@@ -2,36 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { defaultSchool } from "./constants";
+import { ensureUserProfile } from "./profile-helpers";
 import { createSupabaseServerClient } from "./supabase-server";
 
 function textValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function avatarInitial(name: string, email: string) {
-  return (name || email).trim().charAt(0).toUpperCase() || "P";
-}
-
-async function getSchoolId() {
-  const supabase = createSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is not configured.");
-  }
-
-  const { data, error } = await supabase
-    .from("schools")
-    .select("id")
-    .eq("slug", defaultSchool.slug)
-    .single();
-
-  if (error || !data?.id) {
-    throw new Error("Cannot find default school.");
-  }
-
-  return data.id as string;
 }
 
 export async function signUpAction(formData: FormData) {
@@ -63,18 +39,16 @@ export async function signUpAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(error?.message ?? "signup_failed")}`);
   }
 
-  const schoolId = await getSchoolId();
-  const { error: profileError } = await supabase.from("profiles").upsert({
+  const profileResult = await ensureUserProfile(supabase, {
     id: data.user.id,
-    display_name: displayName,
-    user_type: "regular",
-    school_id: schoolId,
-    school_slug: defaultSchool.slug,
-    avatar_initial: avatarInitial(displayName, email)
+    email,
+    user_metadata: {
+      display_name: displayName
+    }
   });
 
-  if (profileError) {
-    redirect(`/register?error=${encodeURIComponent(profileError.message)}`);
+  if (profileResult.error) {
+    redirect(`/register?error=${encodeURIComponent(profileResult.error)}`);
   }
 
   revalidatePath("/");

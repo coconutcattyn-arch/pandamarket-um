@@ -32,7 +32,7 @@ export default async function ProductEditPage({ params }: { params: { id: string
         <p className="mb-3 text-sm font-semibold text-panda-leaf">只可编辑自己发布的商品</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">编辑商品信息</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-panda-muted">
-          当前编辑不会修改商品图片；图片上传逻辑保持不变。
+          可以修改商品文字信息、联系方式，也可以删除旧图片或新增图片。
         </p>
       </section>
       <ProductEditForm product={product} />
