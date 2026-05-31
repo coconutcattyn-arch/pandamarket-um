@@ -2,8 +2,9 @@ import { BottomNav } from "@/components/BottomNav";
 import { FilterPillLink } from "@/components/FilterPillLink";
 import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductSortControls, type ProductSortKey } from "@/components/ProductSortControls";
 import { PageShell, SectionHeader } from "@/components/ui";
-import { categories, locationGroups, locations, productStatus } from "@/lib/data";
+import { categories, getCategoryLabel, getLocationLabel, locationGroups, locations, productStatus } from "@/lib/data";
 import { getProductsFromSupabase } from "@/lib/product-queries";
 import type { ProductCategoryKey, ProductLocationKey, ProductStatusKey } from "@/lib/types";
 
@@ -14,6 +15,8 @@ type ProductsSearchParams = {
   area?: string;
   location?: string;
   status?: string;
+  q?: string;
+  sort?: string;
 };
 
 function firstValue(value: string | string[] | undefined) {
@@ -45,8 +48,18 @@ function isStatusKey(value?: string): value is ProductStatusKey {
   return Boolean(value && productStatus.some((status) => status.key === value));
 }
 
-function getLocationLabel(locationKey: string) {
-  return locations.find((location) => location.key === locationKey)?.label ?? locationKey;
+function isSortKey(value?: string): value is ProductSortKey {
+  return value === "latest" || value === "oldest" || value === "price_asc" || value === "price_desc";
+}
+
+function safeTime(value: string | undefined) {
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+function safePrice(value: number | string | undefined, fallback: number) {
+  const price = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(price) ? price : fallback;
 }
 
 export default async function ProductsPage({ searchParams }: { searchParams?: ProductsSearchParams }) {
@@ -54,6 +67,9 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
   const selectedCategory = isCategoryKey(firstValue(searchParams?.category)) ? firstValue(searchParams?.category) : undefined;
   const selectedLocation = isLocationKey(firstValue(searchParams?.location)) ? firstValue(searchParams?.location) : undefined;
   const selectedStatus = isStatusKey(firstValue(searchParams?.status)) ? firstValue(searchParams?.status) : undefined;
+  const keyword = firstValue(searchParams?.q)?.trim() ?? "";
+  const rawSort = firstValue(searchParams?.sort);
+  const selectedSort: ProductSortKey = isSortKey(rawSort) ? rawSort : "latest";
   const requestedArea = firstValue(searchParams?.area);
   const areaFromLocation = locationGroups.find((group) =>
     selectedLocation ? (group.locationKeys as readonly string[]).includes(selectedLocation) : false
@@ -80,22 +96,57 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
       return false;
     }
 
+    if (keyword) {
+      const haystack = [
+        product.title,
+        product.description,
+        getCategoryLabel(product.category),
+        getLocationLabel(product.location)
+      ].join(" ").toLowerCase();
+
+      if (!haystack.includes(keyword.toLowerCase())) {
+        return false;
+      }
+    }
+
     return true;
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (selectedSort === "oldest") {
+      return safeTime(a.createdAt) - safeTime(b.createdAt);
+    }
+
+    if (selectedSort === "price_asc") {
+      return safePrice(a.price, Number.POSITIVE_INFINITY) - safePrice(b.price, Number.POSITIVE_INFINITY);
+    }
+
+    if (selectedSort === "price_desc") {
+      return safePrice(b.price, Number.NEGATIVE_INFINITY) - safePrice(a.price, Number.NEGATIVE_INFINITY);
+    }
+
+    return safeTime(b.createdAt) - safeTime(a.createdAt);
   });
 
   const baseCategoryParams = {
     area: selectedArea,
     location: selectedLocation,
-    status: selectedStatus
+    status: selectedStatus,
+    q: keyword,
+    sort: selectedSort === "latest" ? undefined : selectedSort
   };
   const baseLocationParams = {
     category: selectedCategory,
-    status: selectedStatus
+    status: selectedStatus,
+    q: keyword,
+    sort: selectedSort === "latest" ? undefined : selectedSort
   };
   const baseStatusParams = {
     category: selectedCategory,
     area: selectedArea,
-    location: selectedLocation
+    location: selectedLocation,
+    q: keyword,
+    sort: selectedSort === "latest" ? undefined : selectedSort
   };
 
   return (
@@ -103,10 +154,19 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
       <PageShell>
         <Header title="商品列表" />
         <section className="rounded-[1.8rem] border border-panda-line bg-white p-4 shadow-soft">
-          <input
+          <form action="/products">
+            {selectedCategory ? <input name="category" type="hidden" value={selectedCategory} /> : null}
+            {selectedArea ? <input name="area" type="hidden" value={selectedArea} /> : null}
+            {selectedLocation ? <input name="location" type="hidden" value={selectedLocation} /> : null}
+            {selectedStatus ? <input name="status" type="hidden" value={selectedStatus} /> : null}
+            {selectedSort !== "latest" ? <input name="sort" type="hidden" value={selectedSort} /> : null}
+            <input
+              name="q"
+              defaultValue={keyword}
             className="w-full rounded-full border border-panda-line bg-panda-paper px-5 py-3 text-base text-panda-ink outline-none placeholder:text-panda-muted/70 focus:border-panda-lime focus:ring-4 focus:ring-panda-mint"
             placeholder="搜索关键词，例如：电饭煲、教材、桌子"
-          />
+            />
+          </form>
 
           <div className="mt-5 space-y-3">
             <p className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-panda-muted">物品类别</p>
@@ -162,7 +222,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                       })}
                       active={selectedLocation === locationKey}
                     >
-                      {getLocationLabel(locationKey)}
+                      {getLocationLabel(locationKey as ProductLocationKey)}
                     </FilterPillLink>
                   ))}
                 </div>
@@ -188,25 +248,14 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <select className="rounded-full border border-panda-line bg-white px-4 py-3 text-sm text-panda-ink outline-none">
-              <option>发布时间排序</option>
-              <option>最新优先</option>
-              <option>最早优先</option>
-            </select>
-            <select className="rounded-full border border-panda-line bg-white px-4 py-3 text-sm text-panda-ink outline-none">
-              <option>价格排序</option>
-              <option>价格从低到高</option>
-              <option>价格从高到低</option>
-            </select>
-          </div>
+          <ProductSortControls selectedSort={selectedSort} />
         </section>
 
         <section className="mt-8">
-          <SectionHeader eyebrow="Marketplace" title={`${filteredProducts.length} 件 UM 闲置`} />
-          {filteredProducts.length > 0 ? (
+          <SectionHeader eyebrow="Marketplace" title={`${sortedProducts.length} 件 UM 闲置`} />
+          {sortedProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {filteredProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} compact />
               ))}
             </div>

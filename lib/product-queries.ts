@@ -154,7 +154,7 @@ export async function getProductByIdFromSupabase(id: string) {
 
   const { data, error } = await supabase
     .from("products")
-    .select(productListSelect)
+    .select(productSelect)
     .eq("id", id)
     .maybeSingle();
 

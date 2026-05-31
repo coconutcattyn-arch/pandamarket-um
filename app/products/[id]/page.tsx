@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ContactSellerSheet } from "@/components/ContactSellerSheet";
 import { DeleteProductButton } from "@/components/DeleteProductButton";
 import { Header } from "@/components/Header";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
@@ -99,6 +100,9 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <ContactSellerSheet productTitle={product.title} contacts={productContacts} />
+            </div>
             <button className="rounded-full border border-panda-line bg-white px-5 py-3 font-semibold text-panda-ink">
               收藏
             </button>
