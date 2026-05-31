@@ -37,10 +37,10 @@ export default async function MyProductsPage() {
         <section className="mt-8">
           <SectionHeader eyebrow="My Listings" title={`${myProducts.length} 件商品`} />
           {myProducts.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {myProducts.map((product) => (
                 <div key={product.id} className="space-y-3">
-                  <ProductCard product={product} />
+                  <ProductCard product={product} compact />
                   <div className="grid grid-cols-2 gap-2">
                     <Link
                       href={`/products/${product.id}/edit`}

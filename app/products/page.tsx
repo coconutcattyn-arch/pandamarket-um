@@ -205,9 +205,9 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
         <section className="mt-8">
           <SectionHeader eyebrow="Marketplace" title={`${filteredProducts.length} 件 UM 闲置`} />
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} compact />
               ))}
             </div>
           ) : (

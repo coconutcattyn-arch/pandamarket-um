@@ -66,7 +66,7 @@ export function PageSkeleton({
               <SkeletonBlock className="h-11 w-24 rounded-full" />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3, 4, 5].map((item) => (
               <div key={item} className="overflow-hidden rounded-[1.6rem] border border-panda-line bg-white shadow-soft">
                 <SkeletonBlock className="aspect-[4/3] w-full rounded-none" />
@@ -83,4 +83,3 @@ export function PageSkeleton({
     </PageShell>
   );
 }
-

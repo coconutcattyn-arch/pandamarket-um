@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import { BrandLockup } from "@/components/BrandLockup";
 import { signOutAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/supabase-server";
 
@@ -14,38 +15,31 @@ export async function Header({
   const publishHref = user ? "/publish" : "/login?next=/publish";
 
   return (
-    <header className="sticky top-0 z-20 -mx-4 mb-4 border-b border-panda-line/70 glass px-4 py-3 sm:-mx-6 sm:px-6">
-      <div className="mx-auto flex max-w-5xl items-center justify-between">
-        <Link href="/" prefetch className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-panda-lime text-sm font-bold text-panda-ink shadow-sm">
-            PM
-          </span>
-          <span>
-            <span className="block text-sm font-semibold leading-tight text-panda-ink">{title}</span>
-            <span className="block text-xs text-panda-muted">UM校园交易社区</span>
-          </span>
-        </Link>
+    <header className="sticky top-0 z-20 -mx-4 mb-4 border-b border-panda-line/70 bg-[#FFFDF7]/88 px-4 pb-2.5 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+        <BrandLockup />
+        <span className="sr-only">{title}</span>
         <div className="flex items-center gap-2">
           {user ? (
             <>
-              <Link href="/my-products" prefetch className="rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink">
+              <Link href="/my-products" prefetch className="hidden rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink sm:inline-flex">
                 我的商品
               </Link>
               <form action={signOutAction}>
-                <button className="rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink" type="submit">
+                <button className="hidden rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink sm:inline-flex" type="submit">
                   退出登录
                 </button>
               </form>
             </>
           ) : (
-            <Link href="/login" prefetch className="rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink">
+            <Link href="/login" prefetch className="hidden rounded-full border border-panda-line bg-white px-4 py-2 text-sm font-semibold text-panda-ink sm:inline-flex">
               登录
             </Link>
           )}
           <Link
             href={publishHref}
             prefetch
-            className="rounded-full bg-panda-lime px-4 py-2 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
+            className="shrink-0 rounded-full bg-panda-lime px-4 py-2 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
           >
             发布商品
           </Link>

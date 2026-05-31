@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
+import { BrandLockup } from "@/components/BrandLockup";
 import { FilterPillLink } from "@/components/FilterPillLink";
 import { ProductCard } from "@/components/ProductCard";
 import { PageShell, SectionHeader } from "@/components/ui";
@@ -100,22 +101,19 @@ export default async function HomePage({ searchParams }: { searchParams?: HomeSe
   return (
     <>
       <PageShell>
-        <section className="pb-3 pt-2 sm:pb-5">
-          <div className="flex items-start justify-between gap-4">
-            <Link href="/" prefetch className="block">
-              <h1 className="font-serif text-[2.15rem] font-semibold leading-none tracking-normal text-[#C99A2E] sm:text-5xl">
-                PandaMarket
-              </h1>
-              <p className="mt-1.5 text-sm font-medium text-panda-muted">UM校园交易社区</p>
-            </Link>
+        <section className="sticky top-0 z-20 -mx-4 mb-3 border-b border-panda-line/70 bg-[#FFFDF7]/88 px-4 pb-2.5 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+            <BrandLockup priority />
             <Link
               href="/publish"
               prefetch
-              className="mt-1 shrink-0 rounded-full bg-panda-lime px-4 py-2 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
+              className="shrink-0 rounded-full bg-panda-lime px-4 py-2 text-sm font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D]"
             >
               发布
             </Link>
           </div>
+        </section>
+        <section className="pb-3 sm:pb-5">
           <form action="/" className="mt-4 rounded-full border border-panda-line bg-white px-4 py-2.5 shadow-sm">
             {selectedCategory ? <input name="category" type="hidden" value={selectedCategory} /> : null}
             {selectedArea ? <input name="area" type="hidden" value={selectedArea} /> : null}

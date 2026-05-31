@@ -21,9 +21,9 @@ export default function FavoritesPage() {
 
         <section className="mt-8">
           <SectionHeader eyebrow="Favorites" title={`${favoriteProducts.length} 件收藏`} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {favoriteProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} compact />
             ))}
           </div>
         </section>
