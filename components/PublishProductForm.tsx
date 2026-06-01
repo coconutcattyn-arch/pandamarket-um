@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
+import { LocationPicker } from "@/components/LocationPicker";
 import { Field, inputClass } from "@/components/ui";
-import { categories, defaultProductStatus, locations, productStatus } from "@/lib/data";
+import { categories, defaultProductStatus, productStatus } from "@/lib/data";
 import { validateProductImageFiles } from "@/lib/image-utils";
 import { createProductAction, type ProductActionState } from "@/lib/product-actions";
 
@@ -149,13 +150,7 @@ export function PublishProductForm() {
             ))}
           </select>
         </Field>
-        <Field label="交易地点">
-          <select className={inputClass} name="location" required>
-            {locations.map((location) => (
-              <option key={location.key} value={location.key}>{location.label}</option>
-            ))}
-          </select>
-        </Field>
+        <LocationPicker />
       </div>
 
       <Field label="商品描述">

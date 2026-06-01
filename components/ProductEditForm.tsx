@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
+import { LocationPicker } from "@/components/LocationPicker";
 import { Field, inputClass } from "@/components/ui";
-import { categories, getContactMethodLabel, locations, productStatus } from "@/lib/data";
+import { categories, getContactMethodLabel, productStatus } from "@/lib/data";
 import { validateProductImageFiles } from "@/lib/image-utils";
 import { updateProductAction, type ProductEditActionState } from "@/lib/product-actions";
 import type { Product } from "@/lib/types";
@@ -196,15 +197,7 @@ export function ProductEditForm({ product }: { product: Product }) {
             ))}
           </select>
         </Field>
-        <Field label="交易地点">
-          <select className={inputClass} name="location" defaultValue={product.location} required>
-            {locations.map((location) => (
-              <option key={location.key} value={location.key}>
-                {location.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <LocationPicker defaultValue={product.location} />
         <Field label="商品状态">
           <select className={inputClass} name="status" defaultValue={product.status} required>
             {productStatus.map((status) => (
@@ -238,4 +231,3 @@ export function ProductEditForm({ product }: { product: Product }) {
     </form>
   );
 }
-
