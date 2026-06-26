@@ -1,22 +1,21 @@
-import Image from "next/image";
 import Link from "next/link";
+import { T } from "@/components/I18nProvider";
 
 export function BrandLockup({ priority = false }: { priority?: boolean }) {
+  void priority;
+
   return (
-    <Link href="/" prefetch className="block min-w-0 overflow-hidden">
-      <span className="relative block h-[72px] w-[min(62vw,250px)] overflow-hidden sm:h-[88px] sm:w-[330px]">
-        <Image
-          src="/brand/pandamarket-title.png"
-          alt="PandaMarket"
-          fill
-          priority={priority}
-          sizes="(min-width: 640px) 330px, 66vw"
-          className="object-contain object-left"
-          style={{ transform: "scale(1.28)", transformOrigin: "left center" }}
-        />
+    <Link href="/" prefetch className="flex min-w-0 items-center gap-2.5 py-1">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] bg-gradient-to-br from-[#B71422] to-[#DB3237] text-lg font-black text-white shadow-[0_10px_22px_rgba(183,20,34,0.24)]">
+        P
       </span>
-      <span className="-mt-1 block pl-1 text-xs font-medium tracking-wide text-[#8A7A5C] sm:text-sm">
-        UM校园交易社区
+      <span className="min-w-0">
+        <span className="block truncate text-[1.35rem] font-black leading-none tracking-tight text-[#B71422] sm:text-[1.55rem]">
+          PandaMarket
+        </span>
+        <span className="mt-1 block truncate text-[11px] font-semibold tracking-wide text-[#5B403E]/75 sm:text-xs">
+          <T k="brand.subtitle" />
+        </span>
       </span>
     </Link>
   );

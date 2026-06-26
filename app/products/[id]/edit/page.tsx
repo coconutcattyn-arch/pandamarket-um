@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Header } from "@/components/Header";
+import { T } from "@/components/I18nProvider";
 import { ProductEditForm } from "@/components/ProductEditForm";
 import { PageShell } from "@/components/ui";
 import { getProductByIdFromSupabase } from "@/lib/product-queries";
@@ -28,16 +29,16 @@ export default async function ProductEditPage({ params }: { params: { id: string
   return (
     <PageShell>
       <Header title="编辑商品" currentUser={user} />
-      <section className="rounded-[2rem] border border-panda-line bg-white p-6 text-panda-ink shadow-soft sm:p-8">
-        <p className="mb-3 text-sm font-semibold text-panda-leaf">只可编辑自己发布的商品</p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">编辑商品信息</h1>
+      <section className="rounded-[1.7rem] border border-white bg-gradient-to-br from-white to-[#FFF4E8] p-6 text-panda-ink shadow-[0_14px_36px_rgba(84,59,18,0.08)] sm:p-8">
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-[#FF5A4F]"><T k="edit.eyebrow" /></p>
+        <h1 className="text-3xl font-black tracking-tight sm:text-4xl"><T k="edit.title" /></h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-panda-muted">
-          可以修改商品文字信息、联系方式，也可以删除旧图片或新增图片。
+          <T k="edit.note" />
         </p>
       </section>
       <ProductEditForm product={product} />
-      <Link href={`/products/${product.id}`} prefetch className="mt-5 inline-flex text-sm font-semibold text-panda-leaf">
-        返回商品详情
+      <Link href={`/products/${product.id}`} prefetch className="mt-5 inline-flex text-sm font-bold text-[#FF5A4F]">
+        <T k="edit.back" />
       </Link>
     </PageShell>
   );

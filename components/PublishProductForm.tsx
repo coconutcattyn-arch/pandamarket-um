@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
+import { T, useI18n } from "@/components/I18nProvider";
 import { LocationPicker } from "@/components/LocationPicker";
-import { Field, inputClass } from "@/components/ui";
+import { LocalizedTextInput } from "@/components/LocalizedInput";
+import { Field, inputClass, primaryButtonClass } from "@/components/ui";
 import { categories, defaultProductStatus, productStatus } from "@/lib/data";
 import { validateProductImageFiles } from "@/lib/image-utils";
 import { createProductAction, type ProductActionState } from "@/lib/product-actions";
@@ -18,18 +20,20 @@ type SelectedImagePreview = {
 
 function SubmitButton({ disabled = false }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useI18n();
 
   return (
     <button
-      className="w-full rounded-full bg-panda-lime px-5 py-3.5 font-semibold text-panda-ink shadow-sm transition hover:bg-[#DFAF3D] disabled:cursor-not-allowed disabled:opacity-70"
+      className={`w-full ${primaryButtonClass}`}
       disabled={pending || disabled}
     >
-      {pending ? "发布中..." : "发布商品"}
+      {pending ? t("common.posting") : t("common.publishProduct")}
     </button>
   );
 }
 
 export function PublishProductForm() {
+  const { t } = useI18n();
   const [state, formAction] = useFormState(createProductAction, initialState);
   const [selectedImageCount, setSelectedImageCount] = useState(0);
   const [imageError, setImageError] = useState("");
@@ -73,7 +77,7 @@ export function PublishProductForm() {
             url: URL.createObjectURL(file)
           };
         } catch (error) {
-          console.error("Failed to create publish image preview", { fileName: file.name, error });
+          console.error(t("image.publishPreviewFailed"), { fileName: file.name, error });
           return {
             id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
             name: file.name
@@ -85,16 +89,16 @@ export function PublishProductForm() {
       setImageError("");
     } catch (error) {
       console.error("Failed to read selected images", error);
-      setImageError("读取图片失败，请重新选择图片。");
+      setImageError(t("image.readFailed"));
     }
   }
 
   return (
-    <form action={formAction} className="mt-6 space-y-5 rounded-[2rem] border border-panda-line bg-white p-5 shadow-soft sm:p-8">
-      <Field label="商品图片">
-        <div className="grid gap-3 rounded-[1.4rem] border border-dashed border-panda-line bg-panda-paper p-5 text-sm text-panda-muted">
+    <form action={formAction} className="mt-6 space-y-5 rounded-[1.7rem] border border-white bg-white/94 p-5 shadow-[0_14px_36px_rgba(84,59,18,0.08)] sm:p-8">
+      <Field label={<T k="form.photos" />}>
+        <div className="grid gap-3 rounded-[1.35rem] border border-dashed border-[#FFD1B8] bg-[#FFF8EC] p-5 text-sm text-panda-muted">
           <input
-            className="block w-full text-sm text-panda-muted file:mr-4 file:rounded-full file:border-0 file:bg-panda-lime file:px-4 file:py-2 file:font-semibold file:text-panda-ink"
+            className="block w-full text-sm text-panda-muted file:mr-4 file:rounded-full file:border-0 file:bg-[#FF5A4F] file:px-4 file:py-2 file:font-semibold file:text-white"
             name="images"
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -102,13 +106,13 @@ export function PublishProductForm() {
             onChange={handleImageChange}
           />
           <span>
-            支持从相册选择 1-5 张 jpg、jpeg、png、webp 图片。已选择 {selectedImageCount} 张，暂不上传也可以发布。
+            {t("form.photosHelp", { count: selectedImageCount })}
           </span>
-          {selectedImageCount === 0 ? <span>未选择图片时会使用默认商品图。</span> : null}
+          {selectedImageCount === 0 ? <span>{t("form.noPhotos")}</span> : null}
           {previews.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               {previews.map((preview) => (
-                <div key={preview.id} className="overflow-hidden rounded-2xl border border-panda-line bg-white">
+                <div key={preview.id} className="overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
                   {preview.url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={preview.url} alt={preview.name} className="aspect-square w-full object-cover" />
@@ -125,56 +129,56 @@ export function PublishProductForm() {
         </div>
       </Field>
 
-      <Field label="标题">
-        <input className={inputClass} name="title" placeholder="例如：小型电饭煲 1.6L" required />
+      <Field label={<T k="form.title" />}>
+        <LocalizedTextInput className={inputClass} name="title" placeholderKey="form.titlePlaceholder" required />
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="价格（RM）">
-          <input className={inputClass} name="price" placeholder="0 表示免费赠送" type="number" min="0" step="0.01" required />
+        <Field label={<T k="form.price" />}>
+          <LocalizedTextInput className={inputClass} name="price" placeholderKey="form.pricePlaceholder" type="number" min="0" step="0.01" required />
         </Field>
-        <Field label="商品状态">
+        <Field label={<T k="form.status" />}>
           <select className={inputClass} name="status" defaultValue={defaultProductStatus}>
             {productStatus.map((status) => (
-              <option key={status.key} value={status.key}>{status.label}</option>
+              <option key={status.key} value={status.key}>{t(`status.${status.key}` as never)}</option>
             ))}
           </select>
         </Field>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="商品分类">
+        <Field label={<T k="form.category" />}>
           <select className={inputClass} name="category" required>
             {categories.map((category) => (
-              <option key={category.key} value={category.key}>{category.label}</option>
+              <option key={category.key} value={category.key}>{t(`category.${category.key}` as never)}</option>
             ))}
           </select>
         </Field>
         <LocationPicker />
       </div>
 
-      <Field label="商品描述">
+      <Field label={<T k="form.description" />}>
         <textarea
           className={`${inputClass} min-h-32 resize-none rounded-[1.4rem]`}
           name="description"
-          placeholder="说明成色、购买时间、交接方式等，帮助买家快速判断。"
+          placeholder={t("form.descriptionPlaceholder")}
           required
         />
       </Field>
 
-      <Field label="成色">
-        <input className={inputClass} name="condition" placeholder="例如：九成新、功能正常、全新未拆" />
+      <Field label={<T k="form.condition" />}>
+        <LocalizedTextInput className={inputClass} name="condition" placeholderKey="form.conditionPlaceholder" />
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <Field label="微信">
-          <input className={inputClass} name="wechat" placeholder="选填" />
+        <Field label={<T k="form.wechat" />}>
+          <input className={inputClass} name="wechat" placeholder={t("common.optional")} />
         </Field>
-        <Field label="WhatsApp">
-          <input className={inputClass} name="whatsapp" placeholder="选填" />
+        <Field label={<T k="form.whatsapp" />}>
+          <input className={inputClass} name="whatsapp" placeholder={t("common.optional")} />
         </Field>
-        <Field label="Telegram">
-          <input className={inputClass} name="telegram" placeholder="选填" />
+        <Field label={<T k="form.telegram" />}>
+          <input className={inputClass} name="telegram" placeholder={t("common.optional")} />
         </Field>
       </div>
 

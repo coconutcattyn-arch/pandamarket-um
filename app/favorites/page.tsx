@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
+import { T } from "@/components/I18nProvider";
 import { ProductCard } from "@/components/ProductCard";
 import { PageShell, SectionHeader } from "@/components/ui";
 import { currentUserId, getFavoriteProducts } from "@/lib/data";
@@ -11,16 +12,16 @@ export default function FavoritesPage() {
     <>
       <PageShell>
         <Header title="我的收藏" />
-        <section className="rounded-[2rem] border border-panda-line bg-white p-5 shadow-soft">
-          <p className="text-sm font-semibold text-panda-leaf">收藏列表</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-panda-ink">先存下，再慢慢看</h1>
+        <section className="rounded-[1.7rem] border border-white bg-gradient-to-br from-white to-[#FFF4E8] p-5 shadow-[0_14px_36px_rgba(84,59,18,0.08)]">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#FF5A4F]"><T k="favorites.eyebrow" /></p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-panda-ink"><T k="favorites.title" /></h1>
           <p className="mt-3 text-sm leading-6 text-panda-muted">
-            当前使用统一 mock 收藏数据，后续接入 Supabase 后可关联到登录用户。
+            <T k="favorites.note" />
           </p>
         </section>
 
         <section className="mt-8">
-          <SectionHeader eyebrow="Favorites" title={`${favoriteProducts.length} 件收藏`} />
+          <SectionHeader eyebrow="Favorites" titleKey="favorites.countTitle" titleValues={{ count: favoriteProducts.length }} />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {favoriteProducts.map((product) => (
               <ProductCard key={product.id} product={product} compact />

@@ -1,6 +1,8 @@
 import { BottomNav } from "@/components/BottomNav";
 import { FilterPillLink } from "@/components/FilterPillLink";
 import { Header } from "@/components/Header";
+import { CategoryLabel, LocationGroupLabel, LocationLabel, StatusLabel, T } from "@/components/I18nProvider";
+import { LocalizedSearchInput } from "@/components/LocalizedInput";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductSortControls, type ProductSortKey } from "@/components/ProductSortControls";
 import { PageShell, SectionHeader } from "@/components/ui";
@@ -153,26 +155,37 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
     <>
       <PageShell>
         <Header title="商品列表" />
-        <section className="rounded-[1.8rem] border border-panda-line bg-white p-4 shadow-soft">
-          <form action="/products">
+        <section className="rounded-[1.7rem] border border-white bg-white/92 p-4 shadow-[0_14px_36px_rgba(84,59,18,0.08)] sm:p-5">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FF5A4F]">Marketplace</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-panda-ink"><T k="products.title" /></h1>
+            </div>
+            <span className="rounded-full bg-[#FFF0E8] px-3 py-1 text-xs font-bold text-[#FF4F45]">
+              {sortedProducts.length} <T k="products.countSuffix" />
+            </span>
+          </div>
+
+          <form action="/products" className="flex items-center gap-2 rounded-full border border-panda-line/70 bg-panda-paper px-4 py-2.5 shadow-inner">
             {selectedCategory ? <input name="category" type="hidden" value={selectedCategory} /> : null}
             {selectedArea ? <input name="area" type="hidden" value={selectedArea} /> : null}
             {selectedLocation ? <input name="location" type="hidden" value={selectedLocation} /> : null}
             {selectedStatus ? <input name="status" type="hidden" value={selectedStatus} /> : null}
             {selectedSort !== "latest" ? <input name="sort" type="hidden" value={selectedSort} /> : null}
-            <input
+            <span className="text-sm text-[#FF5A4F]">⌕</span>
+            <LocalizedSearchInput
               name="q"
               defaultValue={keyword}
-            className="w-full rounded-full border border-panda-line bg-panda-paper px-5 py-3 text-base text-panda-ink outline-none placeholder:text-panda-muted/70 focus:border-panda-lime focus:ring-4 focus:ring-panda-mint"
-            placeholder="搜索关键词，例如：电饭煲、教材、桌子"
+              className="w-full bg-transparent text-sm text-panda-ink outline-none placeholder:text-panda-muted/70 sm:text-base"
+              placeholderKey="products.searchPlaceholder"
             />
           </form>
 
-          <div className="mt-5 space-y-3">
-            <p className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-panda-muted">物品类别</p>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="mt-5 space-y-2">
+            <p className="px-1 text-xs font-bold text-panda-ink"><T k="products.category" /></p>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
               <FilterPillLink href={buildProductsHref(baseCategoryParams)} active={!selectedCategory}>
-                全部类别
+                <T k="home.allCategories" />
               </FilterPillLink>
               {categories.map((category) => (
                 <FilterPillLink
@@ -180,17 +193,17 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                   href={buildProductsHref({ ...baseCategoryParams, category: category.key })}
                   active={selectedCategory === category.key}
                 >
-                  {category.label}
+                  <CategoryLabel value={category.key} />
                 </FilterPillLink>
               ))}
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
-            <p className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-panda-muted">位置</p>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="mt-5 space-y-2">
+            <p className="px-1 text-xs font-bold text-panda-ink"><T k="products.location" /></p>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
               <FilterPillLink href={buildProductsHref(baseLocationParams)} active={!selectedArea && !selectedLocation}>
-                全部位置
+                <T k="home.allLocations" />
               </FilterPillLink>
               {locationGroups.map((group) => (
                 <FilterPillLink
@@ -198,19 +211,19 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                   href={buildProductsHref({ ...baseLocationParams, area: group.key })}
                   active={selectedArea === group.key && !selectedLocation}
                 >
-                  {group.label}
+                  <LocationGroupLabel value={group.key} />
                 </FilterPillLink>
               ))}
             </div>
 
             {selectedAreaGroup ? (
-              <div className="rounded-[1.4rem] border border-panda-line bg-panda-paper p-3">
+              <div className="rounded-[1.35rem] border border-panda-line/70 bg-[#FFF8EC] p-3">
                 <div className="flex flex-wrap gap-2">
                   <FilterPillLink
                     href={buildProductsHref({ ...baseLocationParams, area: selectedAreaGroup.key })}
                     active={!selectedLocation}
                   >
-                    {selectedAreaGroup.label}全部
+                    <LocationGroupLabel value={selectedAreaGroup.key} /> <T k="home.allCategoryShort" />
                   </FilterPillLink>
                   {selectedAreaGroup.locationKeys.map((locationKey) => (
                     <FilterPillLink
@@ -222,7 +235,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                       })}
                       active={selectedLocation === locationKey}
                     >
-                      {getLocationLabel(locationKey as ProductLocationKey)}
+                      <LocationLabel value={locationKey as ProductLocationKey} />
                     </FilterPillLink>
                   ))}
                 </div>
@@ -230,11 +243,11 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
             ) : null}
           </div>
 
-          <div className="mt-5 space-y-3">
-            <p className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-panda-muted">商品状态</p>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="mt-5 space-y-2">
+            <p className="px-1 text-xs font-bold text-panda-ink"><T k="products.status" /></p>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
               <FilterPillLink href={buildProductsHref(baseStatusParams)} active={!selectedStatus}>
-                全部状态
+                <T k="products.allStatus" />
               </FilterPillLink>
               {productStatus.map((status) => (
                 <FilterPillLink
@@ -242,8 +255,8 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                   href={buildProductsHref({ ...baseStatusParams, status: status.key })}
                   active={selectedStatus === status.key}
                 >
-                  {status.label}
-                </FilterPillLink>
+                <StatusLabel value={status.key} />
+              </FilterPillLink>
               ))}
             </div>
           </div>
@@ -252,7 +265,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
         </section>
 
         <section className="mt-8">
-          <SectionHeader eyebrow="Marketplace" title={`${sortedProducts.length} 件 UM 闲置`} />
+          <SectionHeader eyebrow="Marketplace" titleKey="products.listTitle" titleValues={{ count: sortedProducts.length }} />
           {sortedProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {sortedProducts.map((product) => (
@@ -260,8 +273,8 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
               ))}
             </div>
           ) : (
-            <div className="rounded-[1.8rem] border border-panda-line bg-white px-5 py-10 text-center text-panda-muted shadow-soft">
-              暂无符合条件的商品
+            <div className="rounded-[1.7rem] border border-white bg-white/94 px-5 py-10 text-center text-panda-muted shadow-[0_14px_36px_rgba(84,59,18,0.08)]">
+              <T k="common.noMatchingProducts" />
             </div>
           )}
         </section>

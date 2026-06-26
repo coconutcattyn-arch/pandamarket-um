@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/I18nProvider";
 
 export type ProductSortKey = "latest" | "oldest" | "price_asc" | "price_desc";
 
@@ -8,6 +9,7 @@ export function ProductSortControls({ selectedSort }: { selectedSort: ProductSor
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
 
   function updateSort(sort: ProductSortKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -26,24 +28,23 @@ export function ProductSortControls({ selectedSort }: { selectedSort: ProductSor
     <div className="mt-3 grid grid-cols-2 gap-2">
       <select
         aria-label="发布时间排序"
-        className="min-w-0 rounded-full border border-panda-line bg-white px-4 py-3 text-sm text-panda-ink outline-none"
+        className="min-w-0 rounded-full border border-panda-line/80 bg-white px-4 py-3 text-sm font-semibold text-panda-ink shadow-sm outline-none"
         value={selectedSort === "oldest" ? "oldest" : "latest"}
         onChange={(event) => updateSort(event.target.value as ProductSortKey)}
       >
-        <option value="latest">最新发布</option>
-        <option value="oldest">最早发布</option>
+        <option value="latest">{t("sort.latest")}</option>
+        <option value="oldest">{t("sort.oldest")}</option>
       </select>
       <select
         aria-label="价格排序"
-        className="min-w-0 rounded-full border border-panda-line bg-white px-4 py-3 text-sm text-panda-ink outline-none"
+        className="min-w-0 rounded-full border border-panda-line/80 bg-white px-4 py-3 text-sm font-semibold text-panda-ink shadow-sm outline-none"
         value={selectedSort === "price_asc" || selectedSort === "price_desc" ? selectedSort : ""}
         onChange={(event) => updateSort((event.target.value || "latest") as ProductSortKey)}
       >
-        <option value="">价格排序</option>
-        <option value="price_asc">价格从低到高</option>
-        <option value="price_desc">价格从高到低</option>
+        <option value="">{t("sort.price")}</option>
+        <option value="price_asc">{t("sort.priceAsc")}</option>
+        <option value="price_desc">{t("sort.priceDesc")}</option>
       </select>
     </div>
   );
 }
-
